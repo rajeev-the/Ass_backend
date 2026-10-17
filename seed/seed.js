@@ -27,6 +27,26 @@ export async function runSeed() {
     Counter.deleteMany({}),
   ]);
 
+  // Safely drop any legacy authorCode_1 index lacking partialFilterExpression
+  try {
+    const indexes = await User.collection.indexes();
+    const legacyAuthorIndex = indexes.find(
+      (idx) => idx.name === 'authorCode_1' && !idx.partialFilterExpression
+    );
+    if (legacyAuthorIndex) {
+      console.log('🔄 Dropping legacy authorCode_1 index without partialFilterExpression...');
+      await User.collection.dropIndex('authorCode_1');
+    }
+  } catch (_err) {
+    // Collection might be empty/new
+  }
+
+  try {
+    await User.syncIndexes();
+  } catch (_err) {
+    // Ignore index sync warnings
+  }
+
   // 2. Load sample data JSON
   const sampleDataPath = path.join(__dirname, 'bookleaf_sample_data.json');
   if (!fs.existsSync(sampleDataPath)) {

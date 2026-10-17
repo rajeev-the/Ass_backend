@@ -8,6 +8,26 @@ import User from './models/User.js';
 const startServer = async () => {
   await connectDB();
 
+  // Safely reconcile legacy indexes (e.g. authorCode_1 created without partialFilterExpression)
+  try {
+    const indexes = await User.collection.indexes();
+    const legacyAuthorIndex = indexes.find(
+      (idx) => idx.name === 'authorCode_1' && !idx.partialFilterExpression
+    );
+    if (legacyAuthorIndex) {
+      console.log('🔄 Dropping legacy authorCode_1 index without partialFilterExpression...');
+      await User.collection.dropIndex('authorCode_1');
+    }
+  } catch (_idxErr) {
+    // Collection might not exist yet
+  }
+
+  try {
+    await User.syncIndexes();
+  } catch (_syncErr) {
+    // Sync warning is safe to ignore if already up to date
+  }
+
   // Auto-seed if database is completely empty (e.g. fresh in-memory MongoDB instance)
   const userCount = await User.countDocuments();
   if (userCount === 0) {

@@ -29,11 +29,8 @@ const userSchema = new mongoose.Schema(
     },
     authorCode: {
       type: String,
-      default: null,
-      index: {
-        unique: true,
-        sparse: true,
-      },
+      trim: true,
+      default: undefined,
     },
     phone: {
       type: String,
@@ -66,6 +63,15 @@ const userSchema = new mongoose.Schema(
         return ret;
       },
     },
+  }
+);
+
+userSchema.index(
+  { authorCode: 1 },
+  {
+    unique: true,
+    sparse: true,
+    partialFilterExpression: { authorCode: { $type: 'string' } },
   }
 );
 
